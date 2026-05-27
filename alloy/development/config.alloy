@@ -1,0 +1,142 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+loki.write "writing_logs" {
+  endpoint {
+    url = "http://monitoring.local:3100/loki/api/v1/push"
+  }
+}
+
+// ================================================
+// SYSTEM LOGS (varlogs)
+// ================================================
+loki.source.journal "system" {
+    forward_to = [loki.process.system.receiver]
+}
+
+loki.process "system" {
+    stage.static_labels {
+        values = {
+            job      = "system",
+            env      = "production",
+            instance = "vm-development",
+        }
+    }
+
+    forward_to = [loki.write.writing_logs.receiver]
+}
+
+// ================================================
+// AUTH LOG
+// ================================================
+loki.source.file "auth_logs" {
+    targets    = local.file_match.auth_logs.targets
+    forward_to = [loki.process.auth_logs.receiver]
+}
+
+local.file_match "auth_logs" {
+    path_targets = [
+        {
+            __path__ = "/var/log/auth.log",
+            job      = "auth",
+            env      = "production",
+            instance = "vm-development",
+        },
+    ]
+}
+
+loki.process "auth_logs" {
+    stage.static_labels {
+        values = {
+            job      = "auth",
+            env      = "production",
+            instance = "vm-development",
+        }
+    }
+
+    forward_to = [loki.write.writing_logs.receiver]
+}
+
+// ================================================
+// KERNAL LOGS (kern.log / journal kernel)
+// ================================================
+loki.source.journal "kernal_logs" {
+    max_age       = "24h"
+    relabel_rules = loki.relabel.kernel_logs.rules
+    forward_to    = [loki.write.writing_logs.receiver]
+
+    labels = {
+        job      = "kernel",
+        env      = "production",
+        instance = "vm-development",
+    }
+
+    matches = "_TRANSPORT=kernel"
+}
+
+// Optional relabeling
+loki.relabel "kernel_logs" {
+  forward_to = [loki.write.logs.receiver]
+
+  rule {
+    source_labels = ["__journal__hostname"]
+    target_label  = "host"
+  }
+
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+
+  rule {
+    target_label = "service"
+    replacement  = "kernel"
+  }
+}
+
+// ================================================
+// DOCKER DISCOVERY
+// ================================================
+discovery.docker "docker_discorver" {
+    host             = "unix:///var/run/docker.sock"
+    refresh_interval = "5s"
+}
+
+discovery.relabel "docker_relable" {
+    targets = []
+
+    rule {
+        source_labels = ["__meta_docker_container_name"]
+        regex         = "/(.*)"
+        target_label  = "container"
+    }
+}
+
+// ================================================
+// DOCKER LOGS
+// ================================================
+loki.source.docker "docker_logs" {
+    host             = "unix:///var/run/docker.sock"
+    targets          = discovery.docker.docker_discorver.targets
+    forward_to       = [loki.process.docker.receiver]
+    relabel_rules    = discovery.relabel.docker_relable.rules
+    refresh_interval = "5s"
+}
+
+loki.process "docker" {
+    stage.static_labels {
+        values = {
+            env      = "production",
+            job      = "docker",
+            instance = "vm-development",
+        }
+    }
+
+    forward_to = [loki.write.writing_logs.receiver]
+}
+
+
+Accepted publickey
+sshd
