@@ -1,0 +1,84 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+
+  # ================================================
+  # PROXMOX TEMPERATURE
+  # ================================================
+  - job_name: "proxmox-temp"
+    static_configs:
+      - targets: ["192.168.1.33:9100"]
+
+  # ================================================
+  # NODE EXPORTERS (PROXMOX VMs METRICS)
+  # ================================================
+  - job_name: "nodes"
+    static_configs:
+      - targets: ["dev.local:9100"]
+        labels:
+          instance: "development"
+      - targets: ["database.local:9100"]
+        labels:
+          instance: "database"
+      - targets: ["manager-1.local:9100"]
+        labels:
+          instance: "manager-1"
+      - targets: ["worker-1.local:9100"]
+        labels:
+          instance: "worker-1"
+      - targets: ["worker-2.local:9100"]
+        labels:
+          instance: "worker-2"
+      - targets: ["worker-3.local:9100"]
+        labels:
+          instance: "worker-3"
+      - targets: ["personal.local:9100"]
+        labels:
+          instance: "personal"
+      - targets: ["reverse-proxy.local:9100"]
+        labels:
+          instance: "reverse-proxy:9100"
+      - targets: ["gitlab.local:9100"]
+        labels:
+          instance: "gitlab"
+      - targets: ["jenkins.local:9100"]
+        labels:
+          instance: "jenkins"
+      - targets: ["pi.hole:9100"]
+        labels:
+          instance: "pi-hole"
+
+  # ================================================
+  # TRAEFIK
+  # ================================================
+  - job_name: "traefik"
+    static_configs:
+      - targets:
+          - reverse-proxy.local:8082
+
+  # ================================================
+  # JENKINS
+  # ================================================
+  - job_name: "jenkins"
+    metrics_path: /prometheus
+    static_configs:
+      - targets:
+          - jenkins.local:8080
+
+  # ================================================
+  # GRAPHITE (TRUENASE)
+  # ================================================
+  - job_name: "truenas"
+    static_configs:
+      - targets:
+          - monitoring.local:9108
+
+  # ================================================
+  # CADVISOR (DOCKER CONTAINERS)
+  # ================================================
+  - job_name: "docker_containers"
+    static_configs:
+      - targets: ["monitoring.local:8080"]
+        labels:
+          instance: "monitoring"

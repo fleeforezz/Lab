@@ -78,7 +78,7 @@ loki.source.journal "kernal_logs" {
 
 // Optional relabeling
 loki.relabel "kernel_logs" {
-  forward_to = [loki.write.logs.receiver]
+  forward_to = [loki.write.writing_logs.receiver]
 
   rule {
     source_labels = ["__journal__hostname"]
@@ -136,7 +136,3 @@ loki.process "docker" {
 
     forward_to = [loki.write.writing_logs.receiver]
 }
-
-
-Accepted publickey
-sshd
